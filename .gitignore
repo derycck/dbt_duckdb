@@ -1,3 +1,7 @@
+ingestao/data
+.venv
+dbt/dev.duckdb
+*.duckdb
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

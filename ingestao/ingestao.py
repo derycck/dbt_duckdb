@@ -28,7 +28,7 @@ def adjust_encoding(stringa: str):
         return encoded
     except UnicodeDecodeError:
         return stringa
-    except Exception as e:
+    except Exception:
         return stringa
 
 
@@ -61,12 +61,20 @@ def main():
 
     # Caminho para a pasta que contém os arquivos CSV
     data_folder = "data"
+    if not Path("data_folder").absolute().exists():
+        raise FileNotFoundError(
+            f"A pasta {data_folder} não existe.\n"
+            + "Salve as bases de dados nela."
+        )
+
     # Nome do arquivo DuckDB
     duckdb_file = Path(".").absolute().parent / "db" / "dev.duckdb"
     duckdb_file.parent.mkdir(exist_ok=True)
     if duckdb_file.exists():
         print("Removendo arquivo DuckDB existente...\n")
         duckdb_file.unlink()
+    # mensagem para informar local onde o banco de dados será salvo
+    print(f"O banco de dados DuckDB será salvo em: {str(duckdb_file)}")
 
     # Conectar ao banco de dados DuckDB
     con = duckdb.connect(str(duckdb_file))
@@ -78,6 +86,11 @@ def main():
     csv_files = [
         f for f in os.listdir(data_folder) if f.lower().endswith(".csv")
     ]
+    if len(csv_files) == 0:
+        raise FileNotFoundError(
+            "Nenhum arquivo CSV encontrado na pasta de dados.\n"
+            + "Salve as bases de dados na pasta 'data'"
+        )
     print("Arquivos CSV encontrados:")
     [print(f"- {file_name}") for file_name in csv_files]
 

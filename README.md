@@ -71,14 +71,22 @@ pip install dbt-duckdb pandas
 ```
 
 ## Ingestão da base de dados
-Para criar o banco de dados,  abra um terminal com o ambiente virtual ativado e execute o arquivo `ingestao/ingestao.py`.
 
-Repare que o banco de dados será criado em `dbt/dev.duckdb`.
+- Baixe as duas bases de dados e salve em `./data`
+  - [Sample_Fact_Top_Material.zip](https://github.com/andrezaleite/PES_Embraer_DBT/raw/main/data/Sample_Fact_Top_Material.zip)
+  - [Sample_Gestao_Faltas.zip](https://github.com/andrezaleite/PES_Embraer_DBT/raw/main/data/Sample_Gestao_Faltas.zip)
+
+Para criar o banco de dados:
+- Abra um terminal com o ambiente virtual ativado
+- Execute o arquivo `ingestao/ingestao.py`.
+
+Repare que o banco de dados será criado em `db/dev.duckdb`.
 
 ## Criação do projeto DBT
 
 Abra um terminal em uma pasta vazia e com o ambiente virtual ativado.
-****
+
+
 Execute o comando abaixo e siga as instruções no terminal
 ```shell
 dbt init
@@ -87,6 +95,7 @@ dbt init
 As instruções podem com o passar das versões do DBT, mas essencialmente são:
 - Digitar um nome para o projeto
 - Escolher o banco de dados para a configuração de profile. Como o DBT foi instalado usando a extensão "dbt-duckdb", aparecerá apenas a opção do banco de dados duckdb. Assim, digite "1" e prossiga
+
 ## Configuração de profile
 
 em dbt_duckdb/profiles.yml

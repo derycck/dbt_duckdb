@@ -47,6 +47,7 @@ Para começar, siga os passos abaixo:
 - Criação de modelo SQL
 	- Com fonte no BD
 	- Com fonte em outro modelo
+- Criação de modelo python
 - Declaração de metadados de modelo
 - Gerar e visualizar documentação
 	- Lineage: Visualização gráfica dos modelos
@@ -55,7 +56,7 @@ Para começar, siga os passos abaixo:
 - Comandos frequentes
 - Materiais de suporte
 - Alguns tópicos relevantes, mas não contemplados:
-	- modelos python, macros, modelos incrementais, slow changing dimensions com snapshots, testes singulares em SQL, criação modelo SQL com jinja e iteração de ajuste com `dbt compile`
+	- macros, modelos incrementais, slow changing dimensions com snapshots, testes singulares em SQL, criação modelo SQL com jinja e iteração de ajuste com `dbt compile`
 
 
 ## Instalação do DBT
@@ -269,6 +270,51 @@ dbt run -s dim_projeto_stats
 Consulte a nova tabela reaproveitando usando o notebook de query ou com o script informado anteriormente, mas editando para a query abaixo:
 ```sql
 select * from dbt_SERVING.dim_projeto_stats
+```
+
+## Criação de modelo python
+
+Em certos momentos é necessário realizar transformações de dados que não podem ser feitas apenas com SQL.
+Nesse caso, o DBT permite a criação de modelos Python, que são scripts Python que podem ser executados no fluxo de trabalho do DBT. Isso permite que você use a linguagem Python para realizar transformações de dados complexas, integrar com quaisquer bibliotecas e executar qualquer lógica que não possa ser expressa em SQL.
+
+Desse modo, modelos python sustentam análise de dados avançadas, o que amplia significativamente as possibilidades de manipulação e análise de dados dentro do DBT com DuckDB.
+
+Primeiramente vamos criar um modelo python a partir de uma tabela de source. Repare que a função `dbt.source` é utilizada para referenciar a tabela.
+
+Crie o arquivo `models/staging/dim_material_py.py`
+```python
+import pandas as pd
+
+def model(dbt, session):
+    df_fact_top_material: pd.DataFrame = dbt.source('raw', 'FACT_TOP_MATERIAL')
+
+    return df_fact_top_material
+```
+
+O modelo python sempre deve contem uma função chamada `model`, que recebe dois argumentos: `dbt` e `session`. O argumento `dbt` é um objeto que contém métodos para referenciar modelos e tabelas, enquanto o argumento `session` é um objeto que contém informações sobre a sessão atual do DBT. Essa função deve sempre retornar um DataFrame pandas.
+
+Uma grande vantagem é que, como a tabela é carregada como um DataFrame pandas, você pode realizar qualquer operação de manipulação de dados que o pandas permitir. Além disso, caso não seja suficiente, é possível importar outras bibliotecas Python e executar operações mais complexas.
+
+Por fim vamos criar um modelo python, mas dessa vez a partir de um outro modelo do DBT. Repare que a função `dbt.ref` é utilizada para referenciar o modelo.
+
+Crie o arquivo `models/serving/dim_projeto_stats_py.py`
+
+```python
+import pandas as pd
+
+def model(dbt, session):
+    df_dim_preco: pd.DataFrame = dbt.ref('dim_preco')
+
+    df_result = (
+      df_dim_preco.groupby('PROJETO')
+      .agg(COUNT_PN_MAT_FALT=pd.NamedAgg(column='PN_MAT_FALT', aggfunc='count'),
+           AVG_FTOP_USD_PRECO_UNIT=pd.NamedAgg(column='FTOP_USD_PRECO_UNIT',
+           aggfunc='mean'))
+      .reset_index()
+      .sort_values(by='PROJETO')
+    )
+
+    return df_result
 ```
 
 ## Declaração de metadados de modelo

@@ -1,8 +1,9 @@
 import os
 from pathlib import Path
 
-import duckdb
 import pandas as pd
+
+import duckdb
 
 
 def adjust_encoding(stringa: str):
@@ -111,6 +112,9 @@ def main():
             f"CREATE TABLE IF NOT EXISTS raw.{table_name} AS SELECT * FROM df"
         )
         print(f"Arquivo {csv_file} inserido na tabela raw.{table_name}")
+
+    # TODO: Ingerir tabelas GESTAO_FALTAS_2022_MM
+    # TODO: Ingerir tabela df_material_pivot
 
     # Fechar a conexão com o banco de dados
     con.close()

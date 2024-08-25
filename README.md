@@ -53,10 +53,13 @@ Para começar, siga os passos abaixo:
 	- Lineage: Visualização gráfica dos modelos
 - Testes de modelo
 	- Exemplo de teste genérico (unique)
+- Jinja - Criação de SQL via template
+  - Compilação de modelos
+- Macros - Funções reutilizáveis com parâmetros
 - Comandos frequentes
 - Materiais de suporte
 - Alguns tópicos relevantes, mas não contemplados:
-	- macros, modelos incrementais, slow changing dimensions com snapshots, testes singulares em SQL, criação modelo SQL com jinja e iteração de ajuste com `dbt compile`
+	-  modelos incrementais, slow changing dimensions com snapshots, testes singulares em SQL
 
 
 ## Instalação do DBT
@@ -376,6 +379,7 @@ dbt docs generate
 dbt docs serve
 ```
 Com o segundo comando, o microblog da documentação é aberto, onde o botão flutuante no canto inferior direito abre o gráfico Lineage onde se pode visualizar a relação de dependência entre todos os modelos do projeto.
+
 ## Testes de modelo
 
 Aplicaremos como exemplo um teste genérico de valores únicos em uma coluna.
@@ -411,6 +415,206 @@ dbt tests
 ```
 
 Também é possível testar todos os modelos pertencentes a uma determinada Tag, mas esse será assunto para a próxima versão do treinamento.
+
+## Jinja - Criação de SQL via template
+Jinja é uma linguagem de modelagem de texto de forma programática. No DBT ela pode ser usada para gerar modelos SQL a partir de um SQL template.
+
+Ao usar Jinja no DBT, você pode definir variáveis, lógica condicional, estruturas de repetição para que após compiladas, produzam um modelo SQL final. Como resultado, o modelo SQL escrito se torna simples e curto, facilitando a manutenção e a reutilização de código.
+
+Com Jinja, também é possível criar macros, que são blocos de código reutilizáveis que podem ser chamados em qualquer parte do projeto. Mas neste tópico abordaremos o uso do Jinja apenas para criação de modelo SQL.
+
+Vamos criar um modelo SQL que utiliza Jinja para realizar a união de 12 tabelas. Se fossêmos criar um SQL puro, seria necessário escrever 12 blocos de código SQL, um para cada tabela, e depois unir todos os blocos com a cláusula UNION ALL, o que custaria pelo menos 48 linhas. Com Jinja, tudo poderá ser escrito em 10 linhas.
+
+Primeiramente devemos informar ao DBT quais novas tabelas do banco de dados devem ser tratadas como fonte de dados. para isso, edite o arquivo de fonte de dados para incluir as novas tabelas que utilizaremos no exemplo. Adicione ao final do arquivo:
+
+`models/_SOURCE.yml`
+```yml
+      - name: GESTAO_FALTAS_2022_01
+      - name: GESTAO_FALTAS_2022_02
+      - name: GESTAO_FALTAS_2022_03
+      - name: GESTAO_FALTAS_2022_04
+      - name: GESTAO_FALTAS_2022_05
+      - name: GESTAO_FALTAS_2022_06
+      - name: GESTAO_FALTAS_2022_07
+      - name: GESTAO_FALTAS_2022_08
+      - name: GESTAO_FALTAS_2022_09
+      - name: GESTAO_FALTAS_2022_10
+      - name: GESTAO_FALTAS_2022_11
+      - name: GESTAO_FALTAS_2022_12
+```
+
+Note que no banco de dados, o nome das tabelas segue um padrão, onde o nome da tabela é "GESTAO_FALTAS_2022_" seguido do mês. Por esta razão vamos utilizar Jinja para gerar gerar uma lista de meses e fazer a união de todas as tabelas através de uma estrutura de repetição.
+
+Crie o modelo SQL abaixo.
+
+`models/staging/por_mes/dim_gestao_falta_2022.sql`
+```sql
+-- ["01", "02", ... "12"]
+{% set months = range(1, 12+1) %}
+{% for month in months %}
+    select
+        *
+    from
+        {{ source('raw', 'GESTAO_FALTAS_2022_' + '{:02d}'.format(month)) }}
+    {% if not loop.last %}
+    union all
+    {% endif %}
+{% endfor %}
+```
+
+Ao usar Jinja para gerar um código SQL, a primeira coisa que devemos nos perguntar é se o código criado após ser compilado vai gerar um código SQL válido. Para isso, é possível compilar o modelo SQL com o comando `dbt compile`.
+
+Entre no terminal com o comando abaixo:
+
+```bash
+dbt compile -s dim_gestao_falta_2022
+```
+
+O resultado no terminal será o modelo SQL compilado, podendo ser inspecionado visualmente para saber se atinge suas expectativas antes mesmo de executar o modelo contra o banco de dados.
+
+O terminal também pode informar erro de sintaxe no código Jinja que impede a compilação do modelo SQL, informando a linha em que o erro ocorre, o que auxilia no processo de correção do código.
+
+Neste modelo SQl que concatena 12 tabelas, seria necessário 4 linhas para cada mês, resultando em um arquivo SQL com 48 linhas. Mas com auxílio da notação Jinja, o modelo SQL criado tem apenas 10 linhas, o que facilita a manutenção e a leitura do código.
+
+Apesar do modelo SQL ter escrito em poucas linhas, quando o modelo for executado por trás das cortinas o código Jinja é compilado e o SQL puro de 48 linhas que será executado no banco de dados.
+
+Após compilado, caso o código pareça um SQL válido e de acordo com suas expectativas, o modelo SQL já pode ser executado contra o banco de dados. Utilize o comando abaixo:
+
+```bash
+dbt run -s dim_gestao_falta_2022
+```
+
+Repare que apesar do modelo SQL está dentro de duas pastas (`staging/por_mes`) , ele é executado normalmente pelo seu nome. Isso ocorre porque o DBT exige que cada modelo SQL tenha um nome único, desse modo ele pode ser invocado apenas pelo seu nome independente local onde o arquivo esteja.
+
+As pastas são usadas apenas como uma forma de organizar os modelos e para possibilitar definições ou execuções para o conjunto de modelos dentro da pasta. Definições como tipo de materialização, schema a ser salvo no banco de dados, através do arquivo `dbt_project.yml`...  E execuções como testes, compilação, run e build de modelos.
+
+## Macros - Funções reutilizáveis com parâmetros
+
+Macros são blocos de código reutilizáveis que podem ser chamados em qualquer parte do projeto. Eles são úteis para evitar a repetição de código. Com macros, você pode definir uma função que aceita parâmetros e retorna um bloco de código SQL.
+
+Elas também são escritas em notação Jinja, mas arquivadas em pastas separadas dos modelos, em `macros/`.
+
+Escopo da macro: Unpivot
+Input: tabela do banco de dados no schema raw
+
+Vamos explorar a tabela "Material_PIVOT"  que possui as colunas `"DESCR_MAT_FALT, BOT1, EUG1, GPX1, SJK1"`. As 4 últimas colunas correspondem a quantidade de materiais.
+
+Nosso objetivo é transformar esses dados criando uma nova tabela com apenas 3 colunas: `"DESCR_MAT_FALT, FORNECEDOR, COUNT"`. Onde a coluna "FORNECEDOR" contém os valores `"BOT1", "EUG1", "GPX1" e "SJK1"` e a coluna "COUNT" contém os valores correspondentes a cada fornecedor.
+
+Essa operação é conhecida como unpivot, e é uma operação comum em análise de dados.
+
+Primeiramente vamos criar um SQL puro que realiza essa operação. Em seguida, vamos criar uma macro que realiza a mesma operação, mas de forma reutilizável.
+
+Crie o modelo SQL abaixo:
+
+`models/staging/material_unpivot_sqlpuro.sql`
+```sql
+with material_pivot as (
+    select
+        DESCR_MAT_FALT
+        , BOT1
+        , EUG1
+        , GPX1
+        , SJK1
+    from
+        {{ source('raw', 'MATERIAL_PIVOT') }}
+)
+
+select
+    DESCR_MAT_FALT
+    , 'BOT1' as "FORNECEDOR"
+    , BOT1 as "COUNT"
+from
+    material_pivot
+union all
+select
+    DESCR_MAT_FALT
+    , 'EUG1' as "FORNECEDOR"
+    , EUG1 as "COUNT"
+from
+    material_pivot
+union all
+select
+    DESCR_MAT_FALT
+    , 'GPX1' as "FORNECEDOR"
+    , GPX1 as "COUNT"
+from
+    material_pivot
+union all
+select
+    DESCR_MAT_FALT
+    , 'SJK1' as "FORNECEDOR"
+    , SJK1 as "COUNT"
+from
+    material_pivot
+```
+
+Execute o modelo criado com:
+```shell
+dbt run -s material_unpivot_sqlpuro
+```
+
+Podemos observar que o código acima é repetitivo e possui uma estrutura previsível.
+
+Em um primeiro momento podemos cogitar o uso de código Jinja encurtar o código através de uma estrutura de repetição. Mas como este tipo de processamento de dados é comum e pode ser necessário em outros modelos, a melhor abordagem é criar uma macro que possa realizar essa operação em outros modelos de forma similar a uma chamada de função.
+
+Vamos criar a macro `unpivot` que realiza essa operação a partir de parâmetros.
+
+Crie a macro abaixo:
+
+`macros/utils.sql`
+```sql
+{% macro unpivot(table_name, columns_to_select, category_column, value_column, columns_to_unpivot) %}
+{%- for column in columns_to_unpivot -%}
+select
+    {{ columns_to_select | join(', ') }}
+    , '{{ column }}' as "{{ category_column }}"
+    , {{ column }} as "{{ value_column }}"
+from
+    {{ table_name }}
+{% if not loop.last %}
+union all
+{% endif %}
+{%- endfor -%}
+{% endmacro %}
+```
+
+Em seguida, vamos utilizar a macro `unpivot` para criar um modelo SQL que realiza a operação.
+Crie o modelo sql abaixo:
+
+`models/staging/material_unpivot.sql`
+```sql
+with material_pivot as (
+    select
+        DESCR_MAT_FALT
+        , BOT1
+        , EUG1
+        , GPX1
+        , SJK1
+    from
+        {{ source('raw', 'MATERIAL_PIVOT') }}
+)
+
+{%- set table_name = 'material_pivot' %}
+{%- set columns_to_select = ['DESCR_MAT_FALT'] %}
+{%- set category_column = 'FORNECEDOR' %}
+{%- set value_column = 'COUNT' %}
+{%- set columns_to_unpivot = ['BOT1', 'EUG1', 'GPX1', 'SJK1'] %}
+{{ unpivot(table_name, columns_to_select, category_column, value_column, columns_to_unpivot) }}
+```
+
+Execute o modelo criado com:
+```shell
+dbt run -s material_unpivot
+```
+
+Ao consultar a tabela 'material_unpivot' com 'material_unpivot_sqlpuro' no banco de dados, será possível observar que os resultados são idênticos.
+
+Se o objetivo fosse realizar a mesma operação em uma tabela com dezenas de colunas, construir em um modelo SQL puro seria resultaria em um código extenso e repetitivo com talvez centenas de linhas.
+
+Mas com o auxilio da macro criada, a operação é realizada sempre com a mesma quantidade de linhas, mudando apenas as variáveis que são passadas como parâmetros.
+
+
 
 ## Comandos frequentes
 

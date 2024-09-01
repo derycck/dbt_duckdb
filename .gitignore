@@ -1,3 +1,5 @@
+duck/
+duckdb/
 ingestao/data
 .venv
 dbt/dev.duckdb

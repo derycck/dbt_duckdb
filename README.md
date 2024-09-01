@@ -12,29 +12,6 @@ DBT (Data Build Tool) é uma ferramenta de linha de comando open-source que auxi
 DuckDB é um sistema de gerenciamento de banco de dados OLAP SQL embutido. Ele é projetado para suportar cargas de trabalho de consultas analíticas de forma eficiente e pode ser incorporado em outras aplicações. O DuckDB é conhecido por seu alto desempenho, facilidade de uso e capacidade de lidar com grandes conjuntos de dados em uma única máquina.
 
 
-## Estrutura do Repositório
-
-Este repositório está organizado da seguinte forma:
-
-- `ingestao/`: Contém o script para criar e ingerir os dados brutos no banco de dados.
-- `db/`: Contém o banco de dados duckdb, que é apenas um arquivo.
-
-Estrutura básica de um projeto dbt:
-- `dbt_duckdb/`: O projeto DBT em si
-- `dbt_duckdb/models/`: Contém os modelos DBT, que são arquivos SQL que definem as transformações.
-- `dbt_duckdb/macros/`: Macros DBT personalizadas para estender a funcionalidade do DBT. (Não contemplado)
-- `dbt_duckdb/tests/`: Casos de teste para garantir a correção das transformações de dados.
-
-## Começando
-
-Para começar, siga os passos abaixo:
-
-1. **Clone o repositório**:
-   ```bash
-   git clone https://github.com/derycck/dbt_duckdb
-   cd dbt_duckdb
-   ```
-
 ## Escopo
 - Instalação do DBT em ambiente virtual habilitado para duckdb
 - Ingestão da base de dados
@@ -61,50 +38,97 @@ Para começar, siga os passos abaixo:
 - Alguns tópicos relevantes, mas não contemplados:
 	-  modelos incrementais, slow changing dimensions com snapshots, testes singulares em SQL
 
+## Estrutura do Repositório
+
+Este repositório está organizado da seguinte forma:
+
+- `../.venv`: Ambiente virtual
+- `./`: Pasta raiz do repositório chamada dbt_duckdb.
+- `./ingestao/`: Contém o script para criar e ingerir os dados brutos no banco de dados.
+- `./ingestao/data/`: Onde deve ser salvo os arquivos de dados brutos para ingestão.
+- `./query/`: Contém o notebook para consulta de dados no banco de dados.
+- `./db/`: Onde será gerado o banco de dados duckdb, que é apenas um arquivo.
+
+Estrutura básica de um projeto dbt:
+- `./duck/`: O projeto DBT em si
+- `./duck/dbt_project.yml`: Arquivo de configuração do projeto DBT.
+- `./duck/models/`: Contém os modelos DBT, que são arquivos SQL que definem as transformações.
+- `./duck/macros/`: Macros DBT personalizadas para estender a funcionalidade do DBT. (Não contemplado)
+- `./duck/tests/`: Casos de teste para garantir a correção das transformações de dados.
+
+## Começando
+
+Para começar, você precisa ter o [Python](https://www.python.org/downloads/) e o [Git](https://git-scm.com/downloads) instalados em sua máquina.
+
+Além disso, você deve ter um visualizador de notebooks instalado em sua máquina. Como o [Jupyter Lab](https://jupyter.org/install) ou o [Visual Studio Code](https://code.visualstudio.com/download) com a extensão python.
+
+Este treinamento foi desenvolvido com comandos de terminal compatíveis com o sistema operacional **Windows**, mas pode ser facilmente adaptado para **Linux** e **Mac**.
+
+**Clone o repositório**
+
+Abra um terminal em uma pasta vazia e execute os comandos abaixo:
+```bash
+git clone https://github.com/derycck/dbt_duckdb
+cd dbt_duckdb
+```
 
 ## Instalação do DBT
 
-Em uma pasta vazia, vamos criar um ambiente virtual com as instalações necessárias para usar o DBT com duckdb e uma lib para manipulação de dados tabulares.
+Abra o terminal dentro da pasta do repositório clonado. Agora vamos criar um ambiente virtual com as instalações necessárias para usar o DBT com duckdb e uma lib para manipulação de dados tabulares.
 
-Para isso, execute o script `_install.bat` ou siga os passos abaixo:
+Para isso, execute o script `_install.bat`. Além desse script instalar tudo, ele também cria scripts de atualização do ambiente virtual e de ativação do ambiente virtual. Eles serão gerados em:
+
+- `../activate_venv_update.bat`: Atualização do ambiente virtual
+- `../activate_venv.bat`: Ativação do ambiente virtual
+
+Se preferir instalar manualmente, digite os comandos abaixo no terminal aberto na pasta do repositório.
 ```bash
-python -m venv .venv
-.venv\Scripts\activate # No linux ou mac use `source venv/bin/activate`
+python -m venv ..\.venv
+..\.venv\Scripts\activate # No linux ou mac use `source venv/bin/activate`
 python -m pip install --upgrade pip
 pip install dbt-duckdb pandas
 ```
 
+Caso feche o terminal, para ativar o ambiente virtual novamente, execute o script `../activate_venv.bat` ou abra o terminal na pasta do repositório e digite `..\.venv\Scripts\activate`.
+
+Com isso, a pasta do ambiente virtual chamada ".venv" ficará localizada ao lado da pasta do repositório.
+
 ## Ingestão da base de dados
 
-- Baixe as duas bases de dados e salve em `./data`
+- Baixe as duas bases de dados e salve em `./ingestao/data`
   - [Sample_Fact_Top_Material.zip](https://github.com/andrezaleite/PES_Embraer_DBT/raw/main/data/Sample_Fact_Top_Material.zip)
   - [Sample_Gestao_Faltas.zip](https://github.com/andrezaleite/PES_Embraer_DBT/raw/main/data/Sample_Gestao_Faltas.zip)
 
 Para criar o banco de dados:
-- Abra um terminal com o ambiente virtual ativado
-- Execute o arquivo `ingestao/ingestao.py`.
+- Abra um terminal com o ambiente virtual ativado na pasta do repositório
+- Execute o arquivo de ingestão com o comando abaixo:
+
+```shell
+python ingestao/ingestao.py
+```
 
 Repare que o banco de dados será criado em `db/dev.duckdb`.
 
+Se quiser entender detalhes sobre cada etapa da ingestão, abra o notebook `ingestao/ingestao.ipynb` no VSCODE ou outro visualizador.
+
 ## Criação do projeto DBT
 
-Abra um terminal em uma pasta vazia e com o ambiente virtual ativado.
+Vamos criar um projeto DBT chamado `duck` para seguir com esse treinamento.
 
-
-Execute o comando abaixo e siga as instruções no terminal
+Se certifique de estar com o terminal aberto na pasta do repositório e com o ambiente virtual ativado. Execute o comando abaixo e siga as instruções no terminal
 ```shell
 dbt init
 ```
 
 As instruções podem com o passar das versões do DBT, mas essencialmente são:
-- Digitar um nome para o projeto
+- Digitar um nome para o projeto. Digite `duck`.
 - Escolher o banco de dados para a configuração de profile. Como o DBT foi instalado usando a extensão "dbt-duckdb", aparecerá apenas a opção do banco de dados duckdb. Assim, digite "1" e prossiga
 
 ## Configuração de profile
 
-em dbt_duckdb/profiles.yml
+em `duck/profile.yml`
 ```yml
-default:
+duck:
   outputs:
     dev:
       type: duckdb
@@ -117,8 +141,14 @@ default:
 
 
 ## Executar primeiro modelo
+
+Primeiro vamos acessar a pasta do projeto pelo terminal. Estando com o terminal com o ambiente virtual ativado, adepois digite:
 ```shell
-dbt run my_first_dbt_model
+cd duck
+```
+
+```shell
+dbt run -s my_first_dbt_model
 ```
 
 Confira se a nova tabela foi criada em `query/query.ipynb` ou executando o script abaixo:
@@ -142,17 +172,17 @@ print(tables)
 ## Configuração de source
 Crie o arquivo `_SOURCES.yml` na pasta `models` e preencha com:
 
-`models/_SOURCES.yml`
+`duck/models/_SOURCES.yml`
 ```yml
 version: 2
 
-
 sources:
-  - name: raw
-    description: schema raw
-    tables:
-      - name: FACT_TOP_MATERIAL
-      - name: GESTAO_FALTAS
+  - name: raw
+    description: schema raw
+    tables:
+      - name: FACT_TOP_MATERIAL
+      - name: GESTAO_FALTAS
+      - name: MATERIAL_PIVOT
 ```
 ## Configuração de dbt_project
 
@@ -164,15 +194,15 @@ Faça uma pequena edição ao final do arquivo, indicando que:
 
 ```yml
 models:
-  default:
-    example:
+  duck:
+    example:
       +materialized: view
-    staging:
-      +materialized: table
-      +schema: STAGING
-    serving:
-      +materialized: table
-      +schema: SERVING
+    staging:
+      +materialized: table
+      +schema: staging
+    serving:
+      +materialized: table
+      +schema: serving
 ```
 
 ## Criação de modelo com fonte no BD
@@ -180,7 +210,7 @@ Durante a construção de um sql model, para fazer referência a um modelo no ba
 
 Para exemplificar, crie o modelo abaixo:
 
-models/staging/dim_material.sql
+`duck/models/staging/dim_material.sql`
 ```sql
 with source_data as (
     select *
@@ -199,7 +229,7 @@ dbt run -s dim_material
 
 Confira se a nova tabela reaproveitando usando o notebook de query ou com o script informado anteriormente, mas editando para a query abaixo:
 ```sql
-select * from staging.dim_material
+select * from dbt_staging.dim_material
 ```
 
 Agora vamos criar um modelo que use mais recursos do SQL.
@@ -212,7 +242,7 @@ Essa boa prática busca facilitar a manutenabilidade das queries de transformaç
 
 Crie o modelo abaixo:
 
-`models/staging/dim_preco.sql`
+`duck/models/staging/dim_preco.sql`
 ```sql
 with
     ftm as (
@@ -246,7 +276,7 @@ dbt run -s dim_preco
 
 Consulte a nova tabela reaproveitando usando o notebook de query ou com o script informado anteriormente, mas editando para a query abaixo:
 ```sql
-select * from dbt_STAGING.dim_preco
+select * from dbt_staging.dim_preco
 ```
 
 ## Criação de modelo com fonte em outro modelo
@@ -255,7 +285,7 @@ Para fazer referência a um modelo existente no DBT, usamos notação jinja com 
 Apesar de um modelo DBT após ser materializado, possa ser referenciado através da função Source, existe algumas vantagens diferenciais em utilizar a função REF.
 Dentre as principais, é possível citar a criação de uma relação de dependência explícita entre os modelos, o que permite ao DBT gerenciar a ordem de execução dos modelos automaticamente. Outra vantagem é a exposição gráfica dessa relação de dependência entre os modelos através do gráfico Lineage.
 
-Crie o arquivo `models/serving/dim_projeto_stats.sql`
+Crie o arquivo `duck/models/serving/dim_projeto_stats.sql`
 ```sql
 select
     PROJETO
@@ -272,7 +302,7 @@ dbt run -s dim_projeto_stats
 
 Consulte a nova tabela reaproveitando usando o notebook de query ou com o script informado anteriormente, mas editando para a query abaixo:
 ```sql
-select * from dbt_SERVING.dim_projeto_stats
+select * from dbt_serving.dim_projeto_stats
 ```
 
 ## Criação de modelo python
@@ -284,7 +314,7 @@ Desse modo, modelos python sustentam análise de dados avançadas, o que amplia 
 
 Primeiramente vamos criar um modelo python a partir de uma tabela de source. Repare que a função `dbt.source` é utilizada para referenciar a tabela.
 
-Crie o arquivo `models/staging/dim_material_py.py`
+Crie o arquivo `duck/models/staging/dim_material_py.py`
 ```python
 import pandas as pd
 
@@ -300,13 +330,13 @@ Uma grande vantagem é que, como a tabela é carregada como um DataFrame pandas,
 
 Por fim vamos criar um modelo python, mas dessa vez a partir de um outro modelo do DBT. Repare que a função `dbt.ref` é utilizada para referenciar o modelo.
 
-Crie o arquivo `models/serving/dim_projeto_stats_py.py`
+Crie o arquivo `duck/models/serving/dim_projeto_stats_py.py`
 
 ```python
 import pandas as pd
 
 def model(dbt, session):
-    df_dim_preco: pd.DataFrame = dbt.ref('dim_preco')
+    df_dim_preco: pd.DataFrame = dbt.ref('dim_preco').fetchdf()
 
     df_result = (
       df_dim_preco.groupby('PROJETO')
@@ -329,7 +359,7 @@ Uma boa prática recomendada pela documentação oficial do DBT, é criar um arq
 
 Crie o arquivo de metadados yml do modelo dim_preco:
 
-`models/staging/_model_preco.yml`
+`duck/models/staging/_model_preco.yml`
 ```yml
 version: 2
 
@@ -350,7 +380,7 @@ models:
 
 
 Crie o arquivo de metadados yml do modelo dim_projeto_stats:
-`models/serving/_model_projeto_stats.yml`
+`duck/models/serving/_model_projeto_stats.yml`
 ```yml
 version: 2
 
@@ -369,8 +399,6 @@ models:
         description: "Preço médio dos ítens do projeto"
 ```
 
-
-
 ## Gerar e visualizar documentação
 
 Execute os comandos abaixo:
@@ -385,7 +413,7 @@ Com o segundo comando, o microblog da documentação é aberto, onde o botão fl
 Aplicaremos como exemplo um teste genérico de valores únicos em uma coluna.
 Edite o arquivo  de metadados do modelo "dim_projeto_stats" adicionando as últimas duas linhas sobre `data_tests` informadas abaixo:
 
-`models/serving/_model_projeto_stats`
+`duck/models/serving/_model_projeto_stats`
 ```yml
       - name: COUNT_PN_MAT_FALT
         data_type: string
@@ -396,12 +424,12 @@ Edite o arquivo  de metadados do modelo "dim_projeto_stats" adicionando as últi
 
 Execute o comando:
 ```shell
-dbt tests -s dim_projeto_stats
+dbt test -s dim_projeto_stats
 ```
 
 Com isso no terminal será gerado um completo relatório de testes, informando inclusive que a coluna com o teste de valores únicos teve o teste falho.
 
-Os testes genéricos contemplam `unique , not_null, accepted_values e relationships` , todos bem detalhados na documentação.
+Os testes genéricos contemplam `unique, not_null, accepted_values e relationships` , todos bem detalhados na documentação.
 
 Além disso, é possível escrever testes singulares, baseado em queries SQL.
 
@@ -411,7 +439,7 @@ dbt build -s dim_projeto_stats
 ```
 E para testar todos os modelos de nosso projeto:
 ```shell
-dbt tests
+dbt test
 ```
 
 Também é possível testar todos os modelos pertencentes a uma determinada Tag, mas esse será assunto para a próxima versão do treinamento.
@@ -427,7 +455,7 @@ Vamos criar um modelo SQL que utiliza Jinja para realizar a união de 12 tabelas
 
 Primeiramente devemos informar ao DBT quais novas tabelas do banco de dados devem ser tratadas como fonte de dados. para isso, edite o arquivo de fonte de dados para incluir as novas tabelas que utilizaremos no exemplo. Adicione ao final do arquivo:
 
-`models/_SOURCE.yml`
+`duck/models/_SOURCE.yml`
 ```yml
       - name: GESTAO_FALTAS_2022_01
       - name: GESTAO_FALTAS_2022_02
@@ -447,7 +475,7 @@ Note que no banco de dados, o nome das tabelas segue um padrão, onde o nome da 
 
 Crie o modelo SQL abaixo.
 
-`models/staging/por_mes/dim_gestao_falta_2022.sql`
+`duck/models/staging/por_mes/dim_gestao_falta_2022.sql`
 ```sql
 -- ["01", "02", ... "12"]
 {% set months = range(1, 12+1) %}
@@ -503,11 +531,18 @@ Nosso objetivo é transformar esses dados criando uma nova tabela com apenas 3 c
 
 Essa operação é conhecida como unpivot, e é uma operação comum em análise de dados.
 
-Primeiramente vamos criar um SQL puro que realiza essa operação. Em seguida, vamos criar uma macro que realiza a mesma operação, mas de forma reutilizável.
+Primeiramente devemos informar ao DBT quais novas tabelas do banco de dados devem ser tratadas como fonte de dados. para isso, edite o arquivo de fonte de dados para incluir a nova tabela que utilizaremos no exemplo. Adicione ao final do arquivo:
+
+`duck/models/_SOURCE.yml`
+```yml
+      - name: MATERIAL_PIVOT
+```
+
+Agora vamos criar um SQL puro que realiza essa operação. Em seguida, vamos criar uma macro que realiza a mesma operação, mas de forma reutilizável.
 
 Crie o modelo SQL abaixo:
 
-`models/staging/material_unpivot_sqlpuro.sql`
+`duck/models/staging/material_unpivot_sqlpuro.sql`
 ```sql
 with material_pivot as (
     select
@@ -562,7 +597,7 @@ Vamos criar a macro `unpivot` que realiza essa operação a partir de parâmetro
 
 Crie a macro abaixo:
 
-`macros/utils.sql`
+`duck/macros/utils.sql`
 ```sql
 {% macro unpivot(table_name, columns_to_select, category_column, value_column, columns_to_unpivot) %}
 {%- for column in columns_to_unpivot -%}
@@ -582,7 +617,7 @@ union all
 Em seguida, vamos utilizar a macro `unpivot` para criar um modelo SQL que realiza a operação.
 Crie o modelo sql abaixo:
 
-`models/staging/material_unpivot.sql`
+`duck/models/staging/material_unpivot.sql`
 ```sql
 with material_pivot as (
     select
@@ -654,6 +689,7 @@ Materiais de suporte:
 - configuração do [dbt_project](https://docs.getdbt.com/reference/dbt_project.yml)
 - tipos de materializações - [materializations](https://docs.getdbt.com/docs/build/materializations)
 - duckdb - [meta queries](https://duckdb.org/docs/guides/meta/list_tables.html)
+- DBT python model no adaptador duckdb: [duckdb python reference](https://duckdb.org/docs/api/python/reference/)
 - DBT-Curso introdutório oficial e gratuito - [courses-getdbt](https://courses.getdbt.com/)
 
 ## Contribuição

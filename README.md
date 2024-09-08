@@ -52,8 +52,8 @@ Este repositório está organizado da seguinte forma:
 Estrutura básica de um projeto dbt:
 - `./duck/`: O projeto DBT em si
 - `./duck/dbt_project.yml`: Arquivo de configuração do projeto DBT.
-- `./duck/models/`: Contém os modelos DBT, que são arquivos SQL que definem as transformações.
-- `./duck/macros/`: Macros DBT personalizadas para estender a funcionalidade do DBT. (Não contemplado)
+- `./duck/models/`: Contém os modelos DBT, que são arquivos SQL ou Python que definem as transformações.
+- `./duck/macros/`: Macros DBT personalizadas para estender a funcionalidade do DBT.
 - `./duck/tests/`: Casos de teste para garantir a correção das transformações de dados.
 
 ## Começando
@@ -95,7 +95,8 @@ Com isso, a pasta do ambiente virtual chamada ".venv" ficará localizada ao lado
 
 ## Ingestão da base de dados
 
-- Baixe as duas bases de dados e salve em `./ingestao/data`
+- Como a lib Pandas consegue ler URL de arquivos zipados, você não precisa baixar e descompactar as bases. Ao executar o script de ingestão, ele fará automaticamente o download e a ingestão dos dados no banco de dados duckdb.
+- (Opcional) Baixe as duas bases de dados e salve em `./ingestao/data`.
   - [Sample_Fact_Top_Material.zip](https://github.com/andrezaleite/PES_Embraer_DBT/raw/main/data/Sample_Fact_Top_Material.zip)
   - [Sample_Gestao_Faltas.zip](https://github.com/andrezaleite/PES_Embraer_DBT/raw/main/data/Sample_Gestao_Faltas.zip)
 
@@ -124,9 +125,13 @@ As instruções podem com o passar das versões do DBT, mas essencialmente são:
 - Digitar um nome para o projeto. Digite `duck`.
 - Escolher o banco de dados para a configuração de profile. Como o DBT foi instalado usando a extensão "dbt-duckdb", aparecerá apenas a opção do banco de dados duckdb. Assim, digite "1" e prossiga
 
+Ao cumprir os passos acima, aparecerá uma pasta chamada `duck` na raiz do repositório. Dentro dela, haverá arquivos e pastas que compõem o projeto DBT.
+
 ## Configuração de profile
 
-em `duck/profile.yml`
+Crie o arquivo `profile.yml` na pasta `duck` e preencha com:
+
+`./duck/profile.yml`
 ```yml
 duck:
   outputs:
@@ -142,7 +147,9 @@ duck:
 
 ## Executar primeiro modelo
 
-Primeiro vamos acessar a pasta do projeto pelo terminal. Estando com o terminal com o ambiente virtual ativado, adepois digite:
+Todos os comandos do DBT só funciona caso o terminal esteja aberto na pasta do projeto DBT, que é a pasta `duck`.
+
+Então primeiro vamos acessar a pasta do projeto pelo terminal com o ambiente virtual ativado. Depois digite:
 ```shell
 cd duck
 ```
@@ -151,7 +158,9 @@ cd duck
 dbt run -s my_first_dbt_model
 ```
 
-Confira se a nova tabela foi criada em `query/query.ipynb` ou executando o script abaixo:
+Confira se a nova tabela foi criada no notebook `./query/query.ipynb`. Neste notebook já existe funções prontas para consultar o banco de dados.
+
+Mas se preferir criar seu próprio script de consulta, crie um arquivo python na pasta query com o conteúdo abaixo e execute.
 ```python
 import duckdb
 from pathlib import Path
@@ -172,7 +181,7 @@ print(tables)
 ## Configuração de source
 Crie o arquivo `_SOURCES.yml` na pasta `models` e preencha com:
 
-`duck/models/_SOURCES.yml`
+`./duck/models/_SOURCES.yml`
 ```yml
 version: 2
 
@@ -188,10 +197,14 @@ sources:
 
 Vamos declarar que o tipo de declaração dos modelos serão determinados pela pasta onde eles se encontram.
 
-Faça uma pequena edição ao final do arquivo, indicando que:
+Abra o arquivo `dbt_project.yml` na pasta do projeto DBT chamada `duck`.
+A partir da linha 32 onde se encontra a declaração de modelos, precisamos fazer uma edição indicando que:
 - os modelos criados na pasta models/staging , devem ser materializados como tabela no schema **staging**.
 - os modelos criados na pasta models/serving , devem ser materializados como tabela no schema **serving**.
 
+A partir dessa linha 32 mencionada, substitua pelo trecho abaixo:
+
+`./duck/dbt_project.yml`
 ```yml
 models:
   duck:
@@ -208,9 +221,11 @@ models:
 ## Criação de modelo com fonte no BD
 Durante a construção de um sql model, para fazer referência a um modelo no banco de dados, usamos notação jinja, com a função source. Onde o primeiro argumento deve ser o schema e o segundo argumento deve ser o nome da coluna.
 
-Para exemplificar, crie o modelo abaixo:
+Para exemplificar, vamos criar um modelo chamado dim_material.
 
-`duck/models/staging/dim_material.sql`
+Para isso crie o arquivo `dim_material.sql` na pasta `./duck/models/staging/`. E preencha com:
+
+`./duck/models/staging/dim_material.sql`
 ```sql
 with source_data as (
     select *
@@ -236,13 +251,19 @@ Agora vamos criar um modelo que use mais recursos do SQL.
 
 A documentação do DBT recomenda adotar como boa prática, o uso de CTEs em substituição ao uso de subqueries.
 
-Com CTEs, primeiro deve-se selecionar as colunas de cada fonte de dados, para ao final fazer a query final.
+Uma CTE (Common Table Expression) é um tipo de tabela temporária que pode ser construída dentro da consulta SQL.
 
-Essa boa prática busca facilitar a manutenabilidade das queries de transformação, uma vez que é preciso menos esforço mental seguindo esse estilo para interpretar as queries e identificar origem de cada coluna utilizada na transformação.
+A convenção de estilo adotada no contexto do DBT para construir modelos SQL com uso de CTEs, consiste em:
+- Priorizar no topo do modelo SQL, as CTEs de onde originam os dados. Abaixo delas, devem vir as CTEs que fazem transformações nos dados.
+- Declarar explicitamente o nome das colunas usadas em todas as CTEs
+- Não usar mais de uma clausura SELECT na CTE
+- Nomear as CTEs de forma descritiva, de modo que o nome da CTE indique a origem dos dados ou a transformação realizada.
+
+A adoção de CTEs tem por finalidade modularizar uma consulta SQL, o que simplifica a interpretação do modelo SQL. Também facilita a manutenabilidade das queries de transformação, uma vez que seguindo esse estilo é preciso menos esforço mental para interpretar as queries e identificar origem de cada coluna utilizada na transformação.
 
 Crie o modelo abaixo:
 
-`duck/models/staging/dim_preco.sql`
+`./duck/models/staging/dim_preco.sql`
 ```sql
 with
     ftm as (
@@ -285,7 +306,7 @@ Para fazer referência a um modelo existente no DBT, usamos notação jinja com 
 Apesar de um modelo DBT após ser materializado, possa ser referenciado através da função Source, existe algumas vantagens diferenciais em utilizar a função REF.
 Dentre as principais, é possível citar a criação de uma relação de dependência explícita entre os modelos, o que permite ao DBT gerenciar a ordem de execução dos modelos automaticamente. Outra vantagem é a exposição gráfica dessa relação de dependência entre os modelos através do gráfico Lineage.
 
-Crie o arquivo `duck/models/serving/dim_projeto_stats.sql`
+Crie o arquivo `./duck/models/serving/dim_projeto_stats.sql`
 ```sql
 select
     PROJETO
@@ -314,7 +335,7 @@ Desse modo, modelos python sustentam análise de dados avançadas, o que amplia 
 
 Primeiramente vamos criar um modelo python a partir de uma tabela de source. Repare que a função `dbt.source` é utilizada para referenciar a tabela.
 
-Crie o arquivo `duck/models/staging/dim_material_py.py`
+Crie o arquivo `./duck/models/staging/dim_material_py.py`
 ```python
 import pandas as pd
 
@@ -330,7 +351,7 @@ Uma grande vantagem é que, como a tabela é carregada como um DataFrame pandas,
 
 Por fim vamos criar um modelo python, mas dessa vez a partir de um outro modelo do DBT. Repare que a função `dbt.ref` é utilizada para referenciar o modelo.
 
-Crie o arquivo `duck/models/serving/dim_projeto_stats_py.py`
+Crie o arquivo `./duck/models/serving/dim_projeto_stats_py.py`
 
 ```python
 import pandas as pd
@@ -359,7 +380,7 @@ Uma boa prática recomendada pela documentação oficial do DBT, é criar um arq
 
 Crie o arquivo de metadados yml do modelo dim_preco:
 
-`duck/models/staging/_model_preco.yml`
+`./duck/models/staging/_model_preco.yml`
 ```yml
 version: 2
 
@@ -380,7 +401,7 @@ models:
 
 
 Crie o arquivo de metadados yml do modelo dim_projeto_stats:
-`duck/models/serving/_model_projeto_stats.yml`
+`./duck/models/serving/_model_projeto_stats.yml`
 ```yml
 version: 2
 
@@ -413,7 +434,7 @@ Com o segundo comando, o microblog da documentação é aberto, onde o botão fl
 Aplicaremos como exemplo um teste genérico de valores únicos em uma coluna.
 Edite o arquivo  de metadados do modelo "dim_projeto_stats" adicionando as últimas duas linhas sobre `data_tests` informadas abaixo:
 
-`duck/models/serving/_model_projeto_stats`
+`./duck/models/serving/_model_projeto_stats`
 ```yml
       - name: COUNT_PN_MAT_FALT
         data_type: string
@@ -455,7 +476,7 @@ Vamos criar um modelo SQL que utiliza Jinja para realizar a união de 12 tabelas
 
 Primeiramente devemos informar ao DBT quais novas tabelas do banco de dados devem ser tratadas como fonte de dados. para isso, edite o arquivo de fonte de dados para incluir as novas tabelas que utilizaremos no exemplo. Adicione ao final do arquivo:
 
-`duck/models/_SOURCE.yml`
+`./duck/models/_SOURCE.yml`
 ```yml
       - name: GESTAO_FALTAS_2022_01
       - name: GESTAO_FALTAS_2022_02
@@ -475,7 +496,7 @@ Note que no banco de dados, o nome das tabelas segue um padrão, onde o nome da 
 
 Crie o modelo SQL abaixo.
 
-`duck/models/staging/por_mes/dim_gestao_falta_2022.sql`
+`./duck/models/staging/por_mes/dim_gestao_falta_2022.sql`
 ```sql
 -- ["01", "02", ... "12"]
 {% set months = range(1, 12+1) %}
@@ -533,7 +554,7 @@ Essa operação é conhecida como unpivot, e é uma operação comum em análise
 
 Primeiramente devemos informar ao DBT quais novas tabelas do banco de dados devem ser tratadas como fonte de dados. para isso, edite o arquivo de fonte de dados para incluir a nova tabela que utilizaremos no exemplo. Adicione ao final do arquivo:
 
-`duck/models/_SOURCE.yml`
+`./duck/models/_SOURCE.yml`
 ```yml
       - name: MATERIAL_PIVOT
 ```
@@ -542,7 +563,7 @@ Agora vamos criar um SQL puro que realiza essa operação. Em seguida, vamos cri
 
 Crie o modelo SQL abaixo:
 
-`duck/models/staging/material_unpivot_sqlpuro.sql`
+`./duck/models/staging/material_unpivot_sqlpuro.sql`
 ```sql
 with material_pivot as (
     select
@@ -597,7 +618,7 @@ Vamos criar a macro `unpivot` que realiza essa operação a partir de parâmetro
 
 Crie a macro abaixo:
 
-`duck/macros/utils.sql`
+`./duck/macros/utils.sql`
 ```sql
 {% macro unpivot(table_name, columns_to_select, category_column, value_column, columns_to_unpivot) %}
 {%- for column in columns_to_unpivot -%}
@@ -617,7 +638,7 @@ union all
 Em seguida, vamos utilizar a macro `unpivot` para criar um modelo SQL que realiza a operação.
 Crie o modelo sql abaixo:
 
-`duck/models/staging/material_unpivot.sql`
+`./duck/models/staging/material_unpivot.sql`
 ```sql
 with material_pivot as (
     select

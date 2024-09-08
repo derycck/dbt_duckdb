@@ -50,11 +50,27 @@ def preprocess(dataframe: pd.DataFrame, col_name: str) -> pd.DataFrame:
     ).rename(columns=lambda x: x.upper())
 
 
-def preprocess_(data_folder, file_name, column_to_correct):
-    file_path = Path(data_folder) / file_name
-    table_name = Path(file_name).stem.replace("Sample_", "").upper()
-    df = preprocess(
-        pd.read_csv(file_path, encoding="utf8"),
+def preprocess_url(
+    url: str, file_name: str, column_to_correct: str
+) -> dict[str, pd.DataFrame | str]:
+    """
+    Pré-processa um arquivo CSV a partir de uma URL e retorna um DataFrame e o
+        nome da tabela.
+
+    Args:
+        url (str): A URL do arquivo CSV a ser baixado.
+        file_name (str): O nome do arquivo, usado para derivar o nome da
+            tabela.
+        column_to_correct (str): O nome da coluna que precisa de correção no
+            DataFrame.
+
+    Returns:
+        dict: Um dicionário contendo o DataFrame pré-processado ('df') e o nome
+            da tabela ('table_name').
+    """
+    table_name: str = Path(file_name).stem.replace("Sample_", "").upper()
+    df: pd.DataFrame = preprocess(
+        pd.read_csv(url, encoding="utf8"),
         column_to_correct,
     )
     return {"df": df, "table_name": table_name}
@@ -83,22 +99,17 @@ def get_material_pivot(df_gestao_faltas):
 
 def main():
     """
-    Ingerindo arquivos CSV no DuckDB.
+    Ingerindo bases via URL no DuckDB.
     1. Remove qualquer arquivo DuckDB existente.
     2. Conecta-se ao banco de dados DuckDB.
     3. Cria o esquema "RAW".
-    4. Lista todos os arquivos CSV na pasta de dados especificada.
-    5. Ingere no DuckDB, as tabelas FACT_TOP_MATERIAL, GESTAO_FALTAS,
-        12 tabelas GESTAO_FALTAS_2022_MM e MATERIAL_PIVOT.
+    4. Ingere no DuckDB, as tabelas FACT_TOP_MATERIAL, GESTAO_FALTAS
+    5. Cria novas bases através de transformações das anteriores
+    6. Ingere 12 tabelas GESTAO_FALTAS_2022_MM e MATERIAL_PIVOT.
     """
 
-    # Caminho para a pasta que contém os arquivos CSV)
-    data_folder = Path(__file__).parent / "data"
-    if not Path(data_folder).absolute().exists():
-        raise FileNotFoundError(
-            f"A pasta {data_folder} não existe.\n"
-            + "Salve as bases de dados nela."
-        )
+    link_Sample_Fact_Top_Material = "https://github.com/andrezaleite/PES_Embraer_DBT/raw/main/data/Sample_Fact_Top_Material.zip"
+    link_Sample_Gestao_Faltas = "https://github.com/andrezaleite/PES_Embraer_DBT/raw/main/data/Sample_Gestao_Faltas.zip"
 
     # Nome do arquivo DuckDB
     duckdb_file = Path(__file__).parent.absolute().parent / "db" / "dev.duckdb"
@@ -115,54 +126,39 @@ def main():
     # Criar schema "RAW"
     con.execute("CREATE SCHEMA RAW")
 
-    # Listar todos os arquivos CSV na pasta "data"
-    csv_files = [
-        f for f in os.listdir(data_folder) if f.lower().endswith(".csv")
-    ]
-    if len(csv_files) == 0:
-        raise FileNotFoundError(
-            "Nenhum arquivo CSV encontrado na pasta de dados.\n"
-            + "Salve as bases de dados na pasta 'data'"
-        )
-    print("Arquivos CSV encontrados:")
-    [print(f"- {file_name}") for file_name in csv_files]
-
-    cols_to_correct = ["fTOP_DESCRICAO_ECODE", "DESCR_MAT_FALT"]
-
-    # Iterar sobre cada arquivo CSV e inserir os dados no DuckDB
     print("\nInserindo dados no banco de dados DuckDB...")
 
-    dict_return = preprocess_(
-        data_folder, csv_files[0], "fTOP_DESCRICAO_ECODE"
+    # Ingerir base top_material
+    dict_return = preprocess_url(
+        link_Sample_Fact_Top_Material,
+        "Sample_Fact_Top_Material",
+        "fTOP_DESCRICAO_ECODE",
     )
-    df_fact_top_material = dict_return["df"]
+    df_fact_top_material: pd.DataFrame = dict_return["df"]
     table_name_fact_top_material = dict_return["table_name"]
     del dict_return
-    print(
-        f"Inserindo tabela raw.{table_name_fact_top_material} - arquivo "
-        + f"{csv_files[0]}"
-    )
+
+    print(f"Inserindo tabela raw.{table_name_fact_top_material}")
     con.execute(
         f"CREATE TABLE IF NOT EXISTS raw.{table_name_fact_top_material} "
         + "AS SELECT * FROM df_fact_top_material"
     )
-
-    # preprocess_(data_folder, file_name, col_name):
-    dict_return = preprocess_(data_folder, csv_files[1], "DESCR_MAT_FALT")
-    df_gestao_faltas = dict_return["df"]
-    table_name_gestao_Faltas = dict_return["table_name"]
-    del dict_return
-    print(
-        f"Inserindo tabela raw.{table_name_gestao_Faltas} - arquivo "
-        + f"{csv_files[1]}"
+    # Ingerir base gestao_faltas
+    dict_return = preprocess_url(
+        link_Sample_Gestao_Faltas,
+        "Sample_Gestao_Faltas",
+        "DESCR_MAT_FALT",
     )
+    df_gestao_faltas: pd.DataFrame = dict_return["df"]
+    table_name_gestao_faltas = dict_return["table_name"]
+    del dict_return
+    print(f"Inserindo tabela raw.{table_name_gestao_faltas}")
     con.execute(
-        f"CREATE TABLE IF NOT EXISTS raw.{table_name_gestao_Faltas} "
+        f"CREATE TABLE IF NOT EXISTS raw.{table_name_gestao_faltas} "
         + "AS SELECT * FROM df_gestao_faltas"
     )
 
-    # con.close()
-    # exit()
+    print("\nTransformando dados...")
     # Ingerir tabelas GESTAO_FALTAS_2022_MM
     df_gestao_faltas_2022_por_mes = get_gestao_de_falta_por_mes(
         df_gestao_faltas

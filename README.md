@@ -3,6 +3,8 @@ Treinamento de DBT com DuckDB. Introdução objetiva para você aprender na prá
 
 Bem-vindo! Vamos aprender sobre DBT (Data Build Tool) utilizando DuckDB. Este repositório contém alguns materiais úteis, exemplos e exercícios para ajudá-lo a aprender e dominar o uso do DBT com o DuckDB.
 
+Os slides que apresentam este treinamento estão disponíveis [aqui](https://docs.google.com/presentation/d/1Eyxe-XHAuZPYtoF6HLoHNT7kIluMy6ZRoXhNbXLozBI/edit).
+
 ## O que é DBT?
 
 DBT (Data Build Tool) é uma ferramenta de linha de comando open-source que auxilia analistas e engenheiros de dados a transformarem dados em seus data warehouses de maneira mais eficaz. Ele permite que você escreva consultas SQL modulares, teste suas transformações de dados e documente seus modelos de dados. O DBT foca na camada de transformação do processo ELT (Extract, Load, Transform), facilitando a construção e manutenção de pipelines de dados complexos.

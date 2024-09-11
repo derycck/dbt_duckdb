@@ -131,9 +131,9 @@ Ao cumprir os passos acima, aparecerá uma pasta chamada `duck` na raiz do repos
 
 ## Configuração de profile
 
-Crie o arquivo `profile.yml` na pasta `duck` e preencha com:
+Crie o arquivo `profiles.yml` na pasta `duck` e preencha com:
 
-`./duck/profile.yml`
+`./duck/profiles.yml`
 ```yml
 duck:
   outputs:
@@ -714,6 +714,7 @@ Materiais de suporte:
 - duckdb - [meta queries](https://duckdb.org/docs/guides/meta/list_tables.html)
 - DBT python model no adaptador duckdb: [duckdb python reference](https://duckdb.org/docs/api/python/reference/)
 - DBT-Curso introdutório oficial e gratuito - [courses-getdbt](https://courses.getdbt.com/)
+- Extensão de VSCODE: [Power User for DBT](https://marketplace.visualstudio.com/items?itemName=innoverio.vscode-dbt-power-user)
 
 ## Contribuição
 
